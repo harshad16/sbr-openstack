@@ -1,0 +1,36 @@
+---
+- name: Playbook to provision SBR Openstack
+
+  hosts: localhost
+  vars:
+    OCP_URL: "{{ lookup('env','OCP_URL') }}"
+    OCP_TOKEN: "{{ lookup('env','OCP_TOKEN') }}"
+    
+    SBR_APPLICATION_NAMESPACE: "{{ lookup('env','SBR_APPLICATION_NAMESPACE') }}"
+    SBR_INFRA_NAMESPACE: "{{ lookup('env','SBR_INFRA_NAMESPACE') }}"
+
+  gather_facts: false
+  connection: local
+
+  tasks:
+  - name: login to OpenShift using provided token
+    command: "oc login {{ OCP_URL }} --insecure-skip-tls-verify=true --token {{ OCP_TOKEN }}"
+    changed_when: False
+
+  - name: "deleting Objects"
+    command: "oc delete {{ item }} --namespace {{ SBR_APPLICATION_NAMESPACE }}"
+    ignore_errors: true
+    with_items:
+      - "secret/sbr-secret"
+      - "configmap/sbr-configmap"
+      - "buildconfig/sbr-job"
+      - "job/sbr"
+
+  - name: "deleting Objects"
+    command: "oc delete {{ item }} --namespace {{ SBR_INFRA_NAMESPACE }}"
+    ignore_errors: true
+    with_items:
+      - "imagestreams/sbr-job"
+      - "template/sbr-imagestream"
+      - "template/sbr-buildconfig"
+      - "template/sbr-newjob"

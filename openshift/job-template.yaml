@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: Template
+labels:
+  template: sbr-newjob
+  thoth: 0.1.0
+metadata:
+  name: sbr-newjob
+  annotations:
+    description: This is sbr job Config, this template is meant to be used by Jenkins, but could also be used by humans...
+    openshift.io/display-name: sbr job
+    version: 0.2.0
+    tags: poc,ai-stacks,sbr
+    template.openshift.io/documentation-url: https://github.com/AICoE/
+    template.openshift.io/long-description:
+    template.openshift.io/provider-display-name: Red Hat, Inc.
+
+objects:
+- apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: sbr
+    labels:
+      app: sbr
+  spec:
+    parallelism: 1    
+    completions: 1    
+    template:  
+      spec:
+        containers:
+        - image: sbr-job 
+          name: sbr
+          volumeMounts:
+          - name: password
+            mountPath: /secret
+          env:
+          - name: USERNAME
+            valueFrom:
+              secretKeyRef:
+                key: username
+                name: sbr-secret
+          - name: TICKET
+            valueFrom:
+              configMapKeyRef:
+                key: ticket
+                name: sbr-configmap
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "2"
+            limits:
+              memory: "2Gi"
+              cpu: "2"
+        volumes:
+        - name: password
+          secret:
+            secretName: sbr-secret
+            items:
+            - key: password
+              path: passwordfile
+              mode: 0600
+        restartPolicy: Never
+        

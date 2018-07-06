@@ -1,0 +1,26 @@
+---
+  - name: login to OpenShift using provided token
+    command: "oc login {{ OCP_URL }} --insecure-skip-tls-verify=true --token {{ OCP_TOKEN }}"
+    changed_when: False
+
+  - name: "make sure to use project {{ SBR_INFRA_NAMESPACE }}"
+    command: "oc project {{ SBR_INFRA_NAMESPACE }}"
+    register: project_exists
+    ignore_errors: true
+
+  - name: importing required Fedora ImageStreamTags from upstream Registries
+    command: "oc tag --namespace {{ SBR_INFRA_NAMESPACE }} registry.fedoraproject.org/fedora:{{ item }} fedora:{{ item }}"
+    with_items:
+      - 28
+
+  - name: create ImageStream
+    command: oc create --namespace {{ SBR_INFRA_NAMESPACE  }}  --filename=../openshift/imagestream-template.yaml
+    ignore_errors: true
+    
+  - name: create BuildConfig
+    command: oc create --namespace {{ SBR_INFRA_NAMESPACE  }}  --filename=../openshift/buildconfig-template.yaml
+    ignore_errors: true
+
+  - name: create Job
+    command: oc create --namespace {{ SBR_INFRA_NAMESPACE  }}  --filename=../openshift/job-template.yaml
+    ignore_errors: true

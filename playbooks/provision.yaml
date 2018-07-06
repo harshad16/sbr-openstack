@@ -1,0 +1,16 @@
+---
+- name: Playbook to provision SBR Openstack
+
+  hosts: localhost
+  vars:
+    OCP_URL: "{{ lookup('env','OCP_URL') }}"
+    OCP_TOKEN: "{{ lookup('env','OCP_TOKEN') }}"
+    
+    SBR_APPLICATION_NAMESPACE: "{{ lookup('env','SBR_APPLICATION_NAMESPACE') }}"
+    SBR_INFRA_NAMESPACE: "{{ lookup('env','SBR_INFRA_NAMESPACE') }}"
+
+  gather_facts: false
+  connection: local
+  roles:
+  - role: sbr-imagestream
+  - role: sbr-bot

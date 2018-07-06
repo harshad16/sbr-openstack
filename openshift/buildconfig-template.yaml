@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Template
+labels:
+  template: sbr-buildconfig
+  thoth: 0.1.0
+metadata:
+  name: sbr-buildconfig
+  annotations:
+    description: This is SBR OpenStack Supporter/DataHub Bot BuildConfig, this template is meant to be used by Jenkins, but could also be used by humans...
+    openshift.io/display-name: SBR OpenStack Supporter/DataHub Bot BuildConfig
+    version: 0.2.0
+    tags: poc,thoth,ai-stacks,sbr
+    template.openshift.io/documentation-url: https://github.com/AICoE/Thoth/
+    template.openshift.io/long-description: This is SBR OpenStack Supporter/DataHub Bot used for processing SBR OpenStack Customer Case Ticket.
+    template.openshift.io/provider-display-name: Red Hat, Inc.
+
+objects:
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+    labels:
+      app: sbr
+    name: sbr-job
+  spec:
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "1"
+      limits:
+        memory: "1Gi"
+        cpu: "1"
+    output:
+      to:
+        kind: ImageStreamTag
+        name: "sbr-job:${IMAGE_STREAM_TAG}"
+    runPolicy: Serial
+    source:
+      type: Git
+      git:
+        uri: ${GITHUB_URL}
+        ref: ${GITHUB_REF}
+    strategy:
+      type: Docker
+      dockerStrategy:
+        dockerfilePath: Dockerfile
+    triggers:
+    - imageChange: {}
+      type: ImageChange
+    - type: Generic
+      generic:
+        secret: secret101
+        allowEnv: false
+    lookupPolicy:
+      local: true
+
+parameters:
+- description: Git repository for SBR OpenStack Supporter/DataHub Bot
+  displayName: SBR OpenStack Supporter/DataHub Bot git repository
+  required: true
+  name: GITHUB_URL
+  value: 'https://github.com/harshad16/sbr-openstack'
+
+- description: Git branch for SBR OpenStack Supporter/DataHub Bot
+  displayName: SBR OpenStack Supporter/DataHub Bot git reference
+  required: true
+  name: GITHUB_REF
+  value: 'master'
+
+- description: Tag of the output ImageStream the resulting container image should go to
+  displayName: ImageStream Tag
+  required: true
+  name: IMAGE_STREAM_TAG
+  value: 'latest'
