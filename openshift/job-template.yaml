@@ -37,12 +37,12 @@ objects:
             valueFrom:
               secretKeyRef:
                 key: username
-                name: sbr-secret
+                name: ${SBRSECRET}
           - name: TICKET
             valueFrom:
-              configMapKeyRef:
+              secretKeyRef:
                 key: ticket
-                name: sbr-configmap
+                name: ${SBRSECRET}
           resources:
             requests:
               memory: "2Gi"
@@ -53,10 +53,13 @@ objects:
         volumes:
         - name: password
           secret:
-            secretName: sbr-secret
+            secretName: ${SBRSECRET}
             items:
             - key: password
               path: passwordfile
               mode: 0600
         restartPolicy: Never
-        
+parameters:
+  - name: SBRSECRET
+    description: "Name of the secret config on openshift"
+    required: true

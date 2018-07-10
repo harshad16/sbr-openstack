@@ -1,12 +1,10 @@
 import os
 import re
 import json
+import pexpect
 import requests
-import subprocess
-import delegator
 import xml.etree.ElementTree as ET
 from datetime import datetime
-
 
 ticket = os.getenv('TICKET')
 username = os.getenv('USERNAME')
@@ -24,32 +22,24 @@ if int(ticket) > 1599999:
     remote_directory = '/srv/cases/0' + ticket[0:2] + '/' + '/'.join(
         [ticket[i + 2:i + 3] for i in range(len(ticket) - 1)]) + 'attachments'
 
+# create a storage for the ticket
 try:
     os.makedirs('/cases/' + ticket)
 except IOError as e:
-    print(e)
+    pass 
 
-scp_command = 'sshpass -p ' + password + ' scp -o StrictHostKeyChecking=no -r ' + user + '@s01.gss.hst.phx2.redhat.com:' + remote_directory + ' cases/' + ticket
-# c = delegator.run(scp_command)
-# print(c.out)
-scp_process = subprocess.check_call(scp_command.split(' '))
-print('process completed')
+# scp_command = 'sshpass -f /secret/passwordfile scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r ' + user + '@s01.gss.hst.phx2.redhat.com:' + remote_directory + ' /cases/' + ticket
+# scp_process = subprocess.check_call(scp_command.split(' '))
+
+child = pexpect.spawn('scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r ' + user +'@s01.gss.hst.phx2.redhat.com:' + remote_directory + ' /cases/' + ticket)
+child.expect("Warning: Permanently added 's01.gss.hst.phx2.redhat.com,10.5.63.11' (RSA) to the list of known hosts.") 
+child.expect(user+"@s01.gss.hst.phx2.redhat.com's password:")
+child.sendline(password)
 
 
-print('check if folder is created')
-for fold in os.listdir('/cases/'):
-    print(fold)
-
-print('files in ticket folder')
-for fold in os.listdir('/cases/' + ticket):
-    print('inside dir')
-    if os.path.isdir('/cases/' + ticket +'/'+ fold):
-        for fil in os.listdir('/cases/' + ticket+'/'+ fold):
-            print(fil)
-    print(fold)
 # Run Citellus on the Customer Ticket sos-report
 # if os.path.isdir('/cases/' + ticket + '/attachments'):
-os.system('python3 citellus/citellus.py /cases/' + ticket + '/attachments')
+os.system('python3 citellus/citellus.py /cases/' + ticket + '/attachments/sosreport-osp12-controller-0-containers.tar.xz-5040f0b8-615b-4696-b805-e1374f6c7b3e')
 
 # Read the json result file to parse.
 f = open('/cases/' + ticket + '/attachments/citellus.json')
@@ -66,7 +56,6 @@ for hash_key, plugin in report['results'].items():
             if kbase_id not in hash_map:
                 hash_map.append(kbase_id)
                 url = api_endpoint + kbase_id
-                print(url, username, password)
                 response = requests.get(url, auth=(username, password))
                 if response.status_code == 200:
                     xml = response.text
@@ -79,7 +68,7 @@ for hash_key, plugin in report['results'].items():
                     if solution:
                         plugin['result']['solution'] = solution
                 else:
-                    print(response.status_code,'\n',response.text)
+                    print(response.status_code, '\n', response.text)
         solution_data.append(plugin)
 
 # if solution_data:
@@ -111,5 +100,6 @@ payload = {
     "caseNumber": str(ticket),
     "public": False
 }
-    # comment_response = requests.post(comment_endpoint, json=payload, auth=(username, password))
-print('done')
+
+comment_response = requests.post(comment_endpoint, json=payload, auth=(username, password))
+print('comment status: ',comment_response.status_code)

@@ -22,7 +22,6 @@
     ignore_errors: true
     with_items:
       - "secret/sbr-secret"
-      - "configmap/sbr-configmap"
       - "buildconfig/sbr-job"
       - "job/sbr"
 
