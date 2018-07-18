@@ -3,6 +3,7 @@ import re
 import json
 import pexpect
 import requests
+import subprocess
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
@@ -28,13 +29,8 @@ try:
 except IOError as e:
     pass 
 
-# scp_command = 'sshpass -f /secret/passwordfile scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r ' + user + '@s01.gss.hst.phx2.redhat.com:' + remote_directory + ' /cases/' + ticket
-# scp_process = subprocess.check_call(scp_command.split(' '))
-
-child = pexpect.spawn('scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r ' + user +'@s01.gss.hst.phx2.redhat.com:' + remote_directory + ' /cases/' + ticket)
-child.expect("Warning: Permanently added 's01.gss.hst.phx2.redhat.com,10.5.63.11' (RSA) to the list of known hosts.") 
-child.expect(user+"@s01.gss.hst.phx2.redhat.com's password:")
-child.sendline(password)
+scp_command = f'sshpass -f /secret/passwordfile scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r {user}@s01.gss.hst.phx2.redhat.com:{remote_directory} cases/{ticket}'
+scp_process = subprocess.check_call(scp_command.split(' '))
 
 
 # Run Citellus on the Customer Ticket sos-report
