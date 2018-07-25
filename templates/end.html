@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="Harshad Reddy Nalla">
+
+    <title>SBR OpenStack Bot</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="https://getbootstrap.com/docs/4.1/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom styles for this template -->
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/patternfly/3.24.0/css/patternfly.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/patternfly/3.24.0/css/patternfly-additions.min.css">
+    <style type="text/css">
+        html, body {
+            height: 100%;
+        }
+        body {
+            margin: 0;
+        }
+        .container-fluid {
+           padding-top: 150px;; 
+        }
+    </style>
+  </head>
+
+  <body>
+    <nav class="navbar navbar-default navbar-fixed-top navbar-pf">
+      <div class="container">
+        <h1 style="font:http://overpass-30e2.kxcdn.com/overpass.css;color:white;">Red Hat</h1>
+      </div>
+    </nav>
+    <div class="container-fluid">
+    <div class="card">
+      <div class="card-body">
+        <h2 class="card-title">Ticket: {{ ticket }}</h2>
+        {% if success %}
+        <ul class="list-group list-group-flush">        
+            <li class="list-group-item"><h3 >Solution: </h3><h4>{{ solution }}</h4></li>
+            <li class="list-group-item"><a href="{{url}}" class="card-link"><h4><b>Case URL:</b> {{ url }}</a></h4></li>
+        </ul> 
+            <button type="submit" class="btn btn-lg btn-success btn-block"><h4>Success</h4></button>
+    
+        {% else %}
+        <ul class="list-group list-group-flush">
+            <h3 class="card-subtitle mb-2 text-muted">Issue</h3>
+            <li class="list-group-item"><h4>Job failed due to internal modules</h4></li>
+            <button type="submit" class="btn btn-lg btn-danger btn-block"><h4>Failed</h4></button>
+        {% endif %}
+
+        
+        </div>
+        </div>
+    </div>
+  </body>
+</html>
