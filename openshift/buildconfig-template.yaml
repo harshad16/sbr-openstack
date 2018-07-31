@@ -8,9 +8,9 @@ metadata:
   annotations:
     description: This is SBR OpenStack Supporter/DataHub Bot BuildConfig, this template is meant to be used by Jenkins, but could also be used by humans...
     openshift.io/display-name: SBR OpenStack Supporter/DataHub Bot BuildConfig
-    version: 0.2.0
-    tags: poc,thoth,ai-stacks,sbr
-    template.openshift.io/documentation-url: https://github.com/AICoE/Thoth/
+    version: 0.1.0
+    tags: poc,sbr
+    template.openshift.io/documentation-url: https://github.com/
     template.openshift.io/long-description: This is SBR OpenStack Supporter/DataHub Bot used for processing SBR OpenStack Customer Case Ticket.
     template.openshift.io/provider-display-name: Red Hat, Inc.
 

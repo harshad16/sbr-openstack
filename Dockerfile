@@ -14,7 +14,8 @@ RUN \
 	mkdir /cases && \
    	chmod a+wr /cases /etc/passwd
 
-COPY app.py /
+COPY sbr-openstack-bot.py /
 COPY docker_entry.sh /
 
 ENTRYPOINT ["/docker_entry.sh"]
+CMD ["sbr-openstack-bot.py"]

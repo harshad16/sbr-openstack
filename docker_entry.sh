@@ -13,4 +13,4 @@ if [ -z "$uidentry" ] ; then
         echo "Container ENTRYPOINT failed to add passwd entry for anonymous UID"
     fi
 fi
-exec python3 app.py "$@"
+exec python3 "$@"

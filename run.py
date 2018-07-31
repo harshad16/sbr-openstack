@@ -8,10 +8,9 @@ from flask import render_template
 from flask import request
 
 app = Flask(__name__)
-ocl_url = os.getenv('ocl_url')
-ocl_token = os.getenv('ocl_token')
-ocl_namespace = os.getenv('ocl_namespace')
-
+ocl_url = os.getenv('OCL_URL')
+ocl_token = os.getenv('OCL_TOKEN')
+ocl_namespace = os.getenv('OCL_NAMESPACE')
 
 
 @app.route('/')
@@ -33,17 +32,11 @@ def process_ticket():
         # secret
         secret_name = 'sbr-{}'.format(''.join(random.choices(string.ascii_lowercase + string.digits, k=6)))
         secret_response = os.system(f'oc create secret --namespace {namespace} generic {secret_name} \
-      --from-literal=password={request.form.get("password")} \
-      --from-literal=username={request.form.get("username")}\
-      --from-literal=ticket={str(request.form.get("ticket"))}\
-      --from-literal=server={str(request.form.get("server"))}\
-      --type=kubernetes.io/basic-auth')
-
-        # job
-        try:
-            os.system(f'oc create --namespace {namespace}  --filename=openshift/job-template.yaml')
-        except:
-            pass
+            --from-literal=password={request.form.get("password")} \
+            --from-literal=username={request.form.get("username")}\
+            --from-literal=ticket={str(request.form.get("ticket"))}\
+            --from-literal=server={str(request.form.get("server"))}\
+            --type=kubernetes.io/basic-auth')
 
         job_name = 'sbr-job-{}'.format(''.join(random.choices(string.ascii_lowercase + string.digits, k=6)))
         job_response = os.system(f'oc new-app --namespace {namespace} --template={namespace}/sbr-newjob -p SBRSECRET={secret_name} -p SBEJOBNAME={job_name}')

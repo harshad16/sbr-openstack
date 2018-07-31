@@ -8,9 +8,9 @@ metadata:
   annotations:
     description: This is sbr job Config, this template is meant to be used by Jenkins, but could also be used by humans...
     openshift.io/display-name: sbr job
-    version: 0.2.0
-    tags: poc,ai-stacks,sbr
-    template.openshift.io/documentation-url: https://github.com/AICoE/
+    version: 0.1.0
+    tags: poc,sbr
+    template.openshift.io/documentation-url: https://github.com/
     template.openshift.io/long-description:
     template.openshift.io/provider-display-name: Red Hat, Inc.
 

@@ -99,13 +99,16 @@ class SBR:
                 os.chmod(f'/cases/{self.ticket}/attachments/{sosreport_tar_obj.getnames()[0]}', 0o755)
                 os.remove(f'/cases/01991880/attachments/{sosreport}')
                 sosreports.append(sosreport_tar_obj.getnames()[0])
+                _LOGGER.info('Extracted the tar compressed sosreport from attachments')
             elif zipfile.is_zipfile(f'/cases/{self.ticket}/attachments/{sosreport}'):
                 sosreport_zip_obj = zipfile.ZipFile(f'/cases/{self.ticket}/attachments/{sosreport}')
                 sosreport_zip_obj.extractall(path=f'/cases/{self.ticket}/attachments/')
                 os.chmod(f'/cases/{self.ticket}/attachments/{sosreport_tar_obj.getnames()[0]}', 0o755)
                 os.remove(f'/cases/01991880/attachments/{sosreport}')
                 sosreports.append(sosreport_tar_obj.getnames()[0])
+                _LOGGER.info('Extracted the zipped sosreport from attachments')
             else:
+                _LOGGER.error('Failed sosreport extraction from attachments')
                 # Raise and Log
                 return []
 
@@ -132,8 +135,10 @@ class SBR:
         print("Inside execute_citellus")
         if self.check_sosreports(sosreport_dir):
             os.system(f'python3 citellus/citellus.py {sosreport_dir}')
+            _LOGGER.info('Citellus execution on the sosreport is completed successfully')
             return True
-        else:
+        else: 
+            _LOGGER.error('Unable to provide sosreport to Citellus for execution')
             # Raise and Log
             return False
 
@@ -244,7 +249,7 @@ class SBR:
                     #     self.publish_comments(comment)
                     print(comment)
         print("completed") 
-
+        _LOGGER.info('Bot has completed the process')
 
 if __name__ == '__main__':
     sbr = SBR()
