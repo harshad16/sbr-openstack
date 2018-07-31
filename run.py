@@ -20,6 +20,7 @@ def home():
 
 @app.route('/process_ticket', methods=['GET', 'POST'])
 def process_ticket():
+    success = False
     next = request.values.get('next', '')
     if request.method == 'POST':
         namespace = ocl_namespace if ocl_namespace else '' #set default here
@@ -27,19 +28,19 @@ def process_ticket():
         access_token = ocl_token if ocl_token else '' #set default here
         
         # login
-        ocl_response = os.system(f'oc login {url} --insecure-skip-tls-verify=true --token {access_token}')
+        ocl_response = os.system('oc login {} --insecure-skip-tls-verify=true --token {}'.format(url,access_token))
 
         # secret
         secret_name = 'sbr-{}'.format(''.join(random.choices(string.ascii_lowercase + string.digits, k=6)))
-        secret_response = os.system(f'oc create secret --namespace {namespace} generic {secret_name} \
+        secret_response = os.system('oc create secret --namespace {} generic {} \
             --from-literal=password={request.form.get("password")} \
             --from-literal=username={request.form.get("username")}\
             --from-literal=ticket={str(request.form.get("ticket"))}\
             --from-literal=server={str(request.form.get("server"))}\
-            --type=kubernetes.io/basic-auth')
+            --type=kubernetes.io/basic-auth'.format(namespace,secret_name))
 
         job_name = 'sbr-job-{}'.format(''.join(random.choices(string.ascii_lowercase + string.digits, k=6)))
-        job_response = os.system(f'oc new-app --namespace {namespace} --template={namespace}/sbr-newjob -p SBRSECRET={secret_name} -p SBEJOBNAME={job_name}')
+        job_response = os.system('oc new-app --namespace {} --template={}/sbr-newjob -p SBRSECRET={} -p SBEJOBNAME={}'.format(namespace,namespace,secret_name,job_name))
 
         status_check = ['1', 'Running']
         if not job_response:
@@ -54,7 +55,7 @@ def process_ticket():
                             status = [stat.strip().split(' ') for stat in val.split('/')]
                             break
                 solution = ""
-                url = f'https://access.redhat.com/support/cases/#/case/{str(request.form.get("ticket"))}'
+                url = 'https://access.redhat.com/support/cases/#/case/{}'.format(str(request.form.get("ticket")))
                 if status:
                     for stat in status:
                         status_check = stat
@@ -63,7 +64,7 @@ def process_ticket():
                             break
                         elif stat[1] == 'Succeeded' and stat[0] == '1':
                             success = True
-                            comment_url = f'https://api.access.redhat.com/rs/cases/{str(request.form.get("ticket"))}/comments'
+                            comment_url = 'https://api.access.redhat.com/rs/cases/{}/comments'.format(str(request.form.get("ticket")))
                             response = requests.get(comment_url, auth=(request.form.get("username"), request.form.get("password")))
                             if response.status_code == 200:
                                 xml = response.text
