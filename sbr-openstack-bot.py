@@ -233,7 +233,7 @@ class SBR:
         print("Inside main")
         solutions=list()
 
-        remote_host, remote_port, remote_dir = self.get_ticket_directory()
+        remote_host, remote_port, remote_dir = self.get_ticket_config()
         print("remote_dir: ",remote_dir)
         if remote_host and remote_port and remote_dir:
             self.ssh_copy_attachments(remote_host, remote_port, remote_dir)
