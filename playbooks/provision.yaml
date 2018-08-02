@@ -13,4 +13,5 @@
   connection: local
   roles:
   - role: sbr-imagestream
-  - role: sbr-bot
+  - role: sbr-backend
+  - role: sbr-frontend

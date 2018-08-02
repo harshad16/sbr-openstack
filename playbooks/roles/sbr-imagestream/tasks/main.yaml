@@ -20,7 +20,3 @@
   - name: create BuildConfig
     command: oc create --namespace {{ SBR_INFRA_NAMESPACE  }}  --filename=../openshift/buildconfig-template.yaml
     ignore_errors: true
-
-  - name: create jobConfig
-    command: oc create --namespace {{ SBR_INFRA_NAMESPACE  }}  --filename=../openshift/job-template.yaml
-    ignore_errors: true

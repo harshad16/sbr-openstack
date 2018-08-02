@@ -10,9 +10,9 @@ from flask import render_template
 from flask import request
 
 app = Flask(__name__)
-ocl_url = os.getenv('OCL_URL')
-ocl_token = os.getenv('OCL_TOKEN')
-ocl_namespace = os.getenv('OCL_NAMESPACE')
+ocl_url = os.getenv('OCP_URL')
+ocl_token = os.getenv('OCP_TOKEN')
+ocl_namespace = os.getenv('OCP_NAMESPACE')
 
 
 @app.route('/')
@@ -141,10 +141,10 @@ def process_ticket():
                   }
                 }
                 
-        job_response = requests.post(job_endpoint, json=payload,headers=headers, verify=False)
+        job_response = requests.post(job_endpoint, json=payload, headers=headers, verify=False)
         print(job_response.status_code)
         print(job_response.text)
-        if job_response.status_code == 201:
+        if job_response.status_code == 200:
             success =True
             solution="on the way"
         # status_check = ['1', 'Running']

@@ -32,6 +32,7 @@ class SBR:
         self.pwd_dir = '/secret/passwordfile'
         password_file = open(self.pwd_dir, 'r')
         self.password = password_file.read()
+        self.path = f'/cases/{self.ticket}/attachments/'
         
         if 'redhat.com' in self.username:
             self.user = re.search(r'[^@]+', self.username).group(0)
@@ -89,22 +90,22 @@ class SBR:
         """
         print("Inside get_all_sosreports")
         sosreports = list()
-        for sosreport in os.listdir(f'/cases/{self.ticket}/attachments/'):
+        for sosreport in os.listdir(self.path):
             print("name:",sosreport)
             if sosreport.startswith("."):
                     continue
-            if tarfile.is_tarfile(f'/cases/{self.ticket}/attachments/{sosreport}'):
-                sosreport_tar_obj = tarfile.open(f'/cases/{self.ticket}/attachments/{sosreport}')
-                sosreport_tar_obj.extractall(path=f'/cases/{self.ticket}/attachments/')
-                os.chmod(f'/cases/{self.ticket}/attachments/{sosreport_tar_obj.getnames()[0]}', 0o755)
-                os.remove(f'/cases/01991880/attachments/{sosreport}')
+            if tarfile.is_tarfile(f'{self.path}{sosreport}'):
+                sosreport_tar_obj = tarfile.open(f'{self.path}{sosreport}')
+                sosreport_tar_obj.extractall(path=self.path)
+                os.chmod(f'{self.path}{sosreport_tar_obj.getnames()[0]}', 0o755)
+                os.remove(f'{self.path}{sosreport}')
                 sosreports.append(sosreport_tar_obj.getnames()[0])
                 _LOGGER.info('Extracted the tar compressed sosreport from attachments')
-            elif zipfile.is_zipfile(f'/cases/{self.ticket}/attachments/{sosreport}'):
-                sosreport_zip_obj = zipfile.ZipFile(f'/cases/{self.ticket}/attachments/{sosreport}')
-                sosreport_zip_obj.extractall(path=f'/cases/{self.ticket}/attachments/')
-                os.chmod(f'/cases/{self.ticket}/attachments/{sosreport_tar_obj.getnames()[0]}', 0o755)
-                os.remove(f'/cases/01991880/attachments/{sosreport}')
+            elif zipfile.is_zipfile(f'{self.path}{sosreport}'):
+                sosreport_zip_obj = zipfile.ZipFile(f'{self.path}{sosreport}')
+                sosreport_zip_obj.extractall(path=f'{self.path}')
+                os.chmod(f'{self.path}{sosreport_tar_obj.getnames()[0]}', 0o755)
+                os.remove(f'{self.path}{sosreport}')
                 sosreports.append(sosreport_tar_obj.getnames()[0])
                 _LOGGER.info('Extracted the zipped sosreport from attachments')
             else:
@@ -147,7 +148,7 @@ class SBR:
         """
         """
         print("Inside get_solutions")
-        f = open('/cases/' + self.ticket + '/attachments/citellus.json')
+        f = open(f'{self.path}citellus.json')
         report = json.load(f)
 
         hash_map = []
@@ -237,11 +238,11 @@ class SBR:
         print("remote_dir: ",remote_dir)
         if remote_host and remote_port and remote_dir:
             self.ssh_copy_attachments(remote_host, remote_port, remote_dir)
-            if os.path.isdir(f'/cases/{self.ticket}/attachments'):
+            if os.path.isdir({self.path}):
                 sosreports = self.get_all_sosreports()
                 print("sosreports: ",sosreports)
                 for sosreport in sosreports:
-                    self.execute_citellus(f'/cases/{self.ticket}/attachments/{sosreport}')
+                    self.execute_citellus(f'{self.path}{sosreport}')
                     solution_data = self.get_solutions()
                     solutions.append(solution_data)
                     comment = self.generate_comments(solution_data)

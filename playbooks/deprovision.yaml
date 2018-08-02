@@ -21,10 +21,9 @@
     command: "oc delete {{ item }} --namespace {{ SBR_APPLICATION_NAMESPACE }}"
     ignore_errors: true
     with_items:
-      - "secret/sbr-secret"
+      - "secret/sbr-ocp-secret"
       - "buildconfig/sbr-job"
-      - "job/sbr"
-
+  
   - name: "deleting Objects"
     command: "oc delete {{ item }} --namespace {{ SBR_INFRA_NAMESPACE }}"
     ignore_errors: true
@@ -32,4 +31,10 @@
       - "imagestreams/sbr-job"
       - "template/sbr-imagestream"
       - "template/sbr-buildconfig"
-      - "template/sbr-newjob"
+
+  - name: "deleting objects"
+    command: "oc delete  --namespace {{ TENSORFLOW_APPLICATION_NAMESPACE }} {{ item.0 }}/{{ item.1 }}"
+    ignore_errors: true
+    with_nested:
+      - ['deploymentconfig', 'buildconfig', 'imagestream', 'service','route']
+      - ['sbr-openstack']
