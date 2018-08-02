@@ -33,7 +33,7 @@
       - "template/sbr-buildconfig"
 
   - name: "deleting objects"
-    command: "oc delete  --namespace {{ TENSORFLOW_APPLICATION_NAMESPACE }} {{ item.0 }}/{{ item.1 }}"
+    command: "oc delete  --namespace {{ SBR_APPLICATION_NAMESPACE }} {{ item.0 }}/{{ item.1 }}"
     ignore_errors: true
     with_nested:
       - ['deploymentconfig', 'buildconfig', 'imagestream', 'service','route']

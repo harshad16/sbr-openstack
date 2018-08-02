@@ -6,14 +6,14 @@
     changed_when: false
 
     
-  - name: "check if SBR OCL secret exists"
-    command: "oc get secret --namespace {{ SBR_APPLICATION_NAMESPACE }} sbr-ocl-secret"
+  - name: "check if SBR OCP secret exists"
+    command: "oc get secret --namespace {{ SBR_APPLICATION_NAMESPACE }} sbr-ocp-secret"
     register: secret_exists
     ignore_errors: true
     changed_when: false
 
-  - name: create sbr-ocl-secret
-    command: oc create --namespace "{{ SBR_APPLICATION_NAMESPACE }}" generic sbr-ocp-secret \ 
+  - name: create sbr-ocp-secret
+    command: oc create secret --namespace "{{ SBR_APPLICATION_NAMESPACE }}" generic sbr-ocp-secret \ 
       --from-literal=OCP_URL="{{ OCP_URL}}" \
       --from-literal=OCP_TOKEN="{{ OCP_TOKEN }}" \
       --from-literal=OCP_NAMESPACE="{{ SBR_APPLICATION_NAMESPACE }}"
