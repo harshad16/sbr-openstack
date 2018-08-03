@@ -146,41 +146,42 @@ def process_ticket():
         job_response = requests.post(job_endpoint, json=payload, headers=headers, verify=False)
         print(job_response.status_code)
         print(job_response.text)
-        if not job_response.status_code == 201:
-          # Raise and Log
-          pass 
+        if job_response.status_code == 201:
+          success = True
+          solution = "The job is Running. Please Visit the below Url for the solution in 3-4 mins"
+        else:
+          success = False
 
-        while status_check == True:
-          time.sleep(30)
-          job_check_endpoint = '{}/apis/batch/v1/namespaces/{}/jobs/{}'.format(url,namespace,job_name)
-          job_check_response = requests.get(job_check_endpoint, headers=headers, verify=False)
-          print(job_check_response.status_code)
-          job_details = job_check_response.json().get('status')
-          if job_details:
-            if 'active' in job_details and job_details['active'] == 1:
-              status_check = True
-              continue
-            elif 'succeeded' in job_details and job_details['succeeded'] == 1:
-              success = True
-              status_check = False
-              comment_url = 'https://api.access.redhat.com/rs/cases/{}/comments'.format(str(request.form.get("ticket")))
-              response = requests.get(comment_url, auth=(request.form.get("username"), request.form.get("password")))
-              if response.status_code == 200:
-                  xml = response.text
-                  tree = ET.fromstring(xml)
-                  try:
-                      solution = tree[1][4].text
-                      print(solution.split('\n'))
-                  except:
-                      pass
-              break
+        # while status_check == True:
+        #   job_check_endpoint = '{}/apis/batch/v1/namespaces/{}/jobs/{}'.format(url,namespace,job_name)
+        #   job_check_response = requests.get(job_check_endpoint, headers=headers, verify=False)
+        #   print(job_check_response.status_code)
+        #   job_details = job_check_response.json().get('status')
+        #   if job_details:
+        #     if 'active' in job_details and job_details['active'] == 1:
+        #       status_check = True
+        #       continue
+        #     elif 'succeeded' in job_details and job_details['succeeded'] == 1:
+        #       success = True
+        #       status_check = False
+        #       comment_url = 'https://api.access.redhat.com/rs/cases/{}/comments'.format(str(request.form.get("ticket")))
+        #       response = requests.get(comment_url, auth=(request.form.get("username"), request.form.get("password")))
+        #       if response.status_code == 200:
+        #           xml = response.text
+        #           tree = ET.fromstring(xml)
+        #           try:
+        #               solution = tree[1][4].text
+        #               print(solution.split('\n'))
+        #           except:
+        #               pass
+        #       break
             
-            elif 'failed' in job_details and job_details['failed']:
-              success = False
-              status_check = False
+        #     elif 'failed' in job_details and job_details['failed']:
+        #       success = False
+        #       status_check = False
 
-          else:
-            success = False
+        #   else:
+        #     success = False
         
     return render_template('end.html', success=success, ticket=str(request.form.get("ticket")), url=case_url, solution=solution)
 

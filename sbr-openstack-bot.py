@@ -202,7 +202,7 @@ class SBR:
         return comment, link
 
 
-    def publish_comments(self, comment):
+    def publish_comments(self, comment, link):
         """
         Publish the comment on the customer case.
         """
@@ -213,7 +213,7 @@ class SBR:
             "text": comment,
             "uri": link,
             "draft": False,
-            "caseNumber": str(ticket),
+            "caseNumber": str(self.ticket),
             "public": False
         }
 
@@ -231,7 +231,7 @@ class SBR:
         Execute SBR OpenStack bot.
         """
         solutions=list()
-
+        complete = False
         remote_host, remote_port, remote_dir = self.get_ticket_config()
         if remote_host and remote_port and remote_dir:
             self.ssh_copy_attachments(remote_host, remote_port, remote_dir)
@@ -243,7 +243,7 @@ class SBR:
                     solution_data = self.get_solutions(execution_path)
                     solutions.append(solution_data)
                     comment,link = self.generate_comments(solution_data)
-                    if comment and link:
+                    if comment:
                         complete=self.publish_comments(comment,link)
 
         if complete:
