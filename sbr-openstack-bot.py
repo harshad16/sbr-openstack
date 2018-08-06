@@ -22,8 +22,10 @@ import logging
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
-_LOGGER = logging.getLogger(__name__)
+from prometheus_client import CollectorRegistry, pushadd_to_gateway, Gauge
 
+_LOGGER = logging.getLogger(__name__)
+prometheus_registry = CollectorRegistry()
 
 class SBR:
     """
@@ -42,7 +44,7 @@ class SBR:
 
     TODO: 
         1. Integrate Logging functionality
-        2. Added Raise functionality where ever necessary 
+        2. Added Raise functionality where ever necessary
     """
     def __init__(self):
         self.ticket = os.getenv('TICKET')
@@ -99,7 +101,7 @@ class SBR:
             scp_process = subprocess.check_call(scp_command.split(' '))
             _LOGGER.info('Successfully fetched the attachments')
         except Exception as e:
-            # Log and Raise
+            # raise
             _LOGGER.error('scp failed!, fetching attachments is not possible.')
             pass 
         return True
@@ -129,7 +131,7 @@ class SBR:
                 _LOGGER.info('Extracted the zipped sosreport from attachments')
             else:
                 _LOGGER.error('Failed sosreport extraction from attachments')
-                # Raise and Log
+                # raise
                 return []
 
         return sosreports
@@ -158,7 +160,7 @@ class SBR:
             return True
         else: 
             _LOGGER.error('Unable to provide sosreport to Citellus for execution')
-            # Raise and Log
+            # raise
             return False
 
 
@@ -193,7 +195,7 @@ class SBR:
                                 plugin['result']['solution'] = solution
                         else:
                             _LOGGER.error('Request to solution api failed!')
-                            # Raise and Log
+                            # raise
                             pass
                 solution_data.append(plugin)
 
@@ -248,7 +250,7 @@ class SBR:
             _LOGGER.info('comment to customer cases was successfully published')
         else:
             _LOGGER.error('comment to customer cases was NOT successfully published')
-            # Log and Raise
+            # raise
             return False
 
     
@@ -279,6 +281,17 @@ class SBR:
             print('Script Unable to process the ticket')
             _LOGGER.info('Script Unable to process the ticket')
 
+
+    def pushgateway(self):
+        _PUSH_GATEWAY_HOST = os.getenv('PROMETHEUS_PUSHGATEWAY_HOST')
+        _PUSH_GATEWAY_PORT = os.getenv('PROMETHEUS_PUSHGATEWAY_PORT')
+        if _PUSH_GATEWAY_HOST and _PUSH_GATEWAY_PORT:
+            try:
+                push_gateway = f"{_PUSH_GATEWAY_HOST:_PUSH_GATEWAY_PORT}"
+                _LOGGER.debug(f"Submitting metrics to Prometheus push gateway {push_gateway}")
+                pushadd_to_gateway(push_gateway, job='package-extract-runtime', registry=prometheus_registry)
+            except Exception as e:
+                _LOGGER.exception('An error occurred pushing the metrics: {}'.format(str(e)))
 
 
 if __name__ == '__main__':
