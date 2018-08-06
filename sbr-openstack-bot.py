@@ -1,5 +1,12 @@
 """
-SBR OpenStack Supporter/Datahub Bot
+SBR OpenStack Supporter/Datahub Bot.The SBR OpenStack Supppoter bot project is sponsered by Red Hat Inc.
+It is an application for Red Hat SBR OpenStack Support Team.
+The application serves as automation for the customer case ticket processing.
+
+Author: Harshad Reddy Nalla
+Team: Thoth 
+Company: Red Hat Inc.
+
 """
 import os
 import re
@@ -21,6 +28,18 @@ _LOGGER = logging.getLogger(__name__)
 class SBR:
     """
     SBR OpenStack Supporter/Datahub Bot
+
+    The SBR OpenStack Supppoter bot project is sponsered by Red Hat Inc.
+    It is an application for Red Hat SBR OpenStack Support Team.
+    The application serves as automation for the customer case ticket processing,
+    it process the ticket by performing following actions:
+
+    - Fetching relevant information (attachments,SOS Reports).
+    - Extracting the SOS Report from the attachment based upon the SOS Report type of the compression.
+    - Execute Citellus(SBR OpenStack Support Team Validation tool) on to the SOS Report.
+    - Gather solutions for the failed plugins.
+    - Publish the best of the solutions as a private comments on the case.
+
     TODO: 
         1. Integrate Logging functionality
         2. Added Raise functionality where ever necessary 
@@ -44,11 +63,11 @@ class SBR:
 
     def get_ticket_config(self):
         """
-        Gathers the hostname , port and ticket attachement directory details with respect to the server
+        Gathers the hostname , port and ticket attachement directory details with respect to the server.
         """
         if not self.server:
             self.server = "collabrador"
-            _LOGGER.info('Default server collabrador is selected for fetching ticket attachments')
+            _LOGGER.info('Default server `collabrador` is selected for fetching ticket attachments')
         if self.server == "collabrador":
             remote_host = "s01.gss.hst.phx2.redhat.com"
             remote_port = "22"
@@ -56,10 +75,12 @@ class SBR:
             if int(self.ticket) > 1599999:
                 ticket_split = '/'.join([self.ticket[i + 2: i + 3] for i in range(len(self.ticket) - 1)])
                 remote_directory = f'/srv/cases/0{self.ticket[0:2]}/{ticket_split}attachments'
+            _LOGGER.info('Server `collabrador` is selected for fetching ticket attachments')
         elif self.server == "fubar":
             remote_host = "fubar.gsslab.rdu2.redhat.com"
             remote_port = "22"
             remote_directory = f'/fubar/{self.ticket}'
+            _LOGGER.info('Server `fubar` is selected for fetching ticket attachments')
 
         # create a storage for the ticket if not exists
         if not os.path.exists(f'/cases/{self.ticket}'):
@@ -70,21 +91,23 @@ class SBR:
 
     def ssh_copy_attachments(self, remote_host, remote_port, remote_directory):
         """
-        Copy the ticket attachments from the storage server to /cases/<ticket> directory
+        Copy the ticket attachments from the storage server to /cases/<ticket> directory.
         """
         try:
             escape_known_host = f'-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
             scp_command = f'sshpass -f {self.pwd_dir} scp {escape_known_host} -r -P {remote_port} {self.user}@{remote_host}:{remote_directory} /cases/{self.ticket}'
             scp_process = subprocess.check_call(scp_command.split(' '))
+            _LOGGER.info('Successfully fetched the attachments')
         except Exception as e:
             # Log and Raise
-            _LOGGER.error('Bot was unable to fetch the ticket attachments from server')
+            _LOGGER.error('scp failed!, fetching attachments is not possible.')
             pass 
         return True
 
 
     def get_all_sosreports(self):
         """
+        Extract the SOS report based upon there compression type.
         """
         sosreports = list()
         for sosreport in os.listdir(self.path):
@@ -114,7 +137,7 @@ class SBR:
 
     def check_sosreports(self, directory):
         """
-        Check if the directory contained in the attachment is sosreport
+        Check if the directory contained in the attachment is sosreport.
         """
         if "soscleaner" in directory:
             return False
@@ -141,7 +164,7 @@ class SBR:
 
     def get_solutions(self, sosreport_dir):
         """
-        Gather the solutions from the access.redhat/solutions 
+        Gather the solutions from the access.redhat/solutions.
         """
         f = open(f'{sosreport_dir}/citellus.json')
         report = json.load(f)
@@ -157,7 +180,6 @@ class SBR:
                         hash_map.append(kbase_id)
                         url = 'https://api.access.redhat.com/rs/solutions/' + kbase_id
                         response = requests.get(url, auth=(self.username, self.password))
-                        print(response.status_code)
                         if response.status_code == 200:
                             xml = response.text
                             tree = ET.fromstring(xml)
@@ -165,10 +187,12 @@ class SBR:
                                 resolution = tree.find('{http://www.redhat.com/gss/strata}resolution')
                                 solution = resolution.find('{http://www.redhat.com/gss/strata}text').text
                             except:
+                                _LOGGER.error('xml parsing of the solution failed!')
                                 pass
                             if solution:
                                 plugin['result']['solution'] = solution
                         else:
+                            _LOGGER.error('Request to solution api failed!')
                             # Raise and Log
                             pass
                 solution_data.append(plugin)
@@ -197,7 +221,8 @@ class SBR:
             else:
                 comment += f"\nError: {sol.get('description')}\n and {sol.get('result').get('err')}\n"
                 comment += f"---------------------------------------------------------------------\n"   
-            if ind == 3:
+            if ind == 4:
+                _LOGGER.info('Top 5 solutions are found for the failed plugins')
                 break
         return comment, link
 
@@ -218,10 +243,11 @@ class SBR:
         }
 
         comment_response = requests.post(comment_endpoint, json=payload, auth=(self.username, self.password))
-        print(comment_response.status_code)
         if comment_response.status_code == 200 or comment_response.status_code == 201:
             return True
+            _LOGGER.info('comment to customer cases was successfully published')
         else:
+            _LOGGER.error('comment to customer cases was NOT successfully published')
             # Log and Raise
             return False
 
@@ -248,10 +274,12 @@ class SBR:
 
         if complete:
             print('Script successfully completed')
+            _LOGGER.info('Script successfully completed')
         else:
             print('Script Unable to process the ticket')
+            _LOGGER.info('Script Unable to process the ticket')
 
-        _LOGGER.info('Bot has completed the process')
+
 
 if __name__ == '__main__':
     sbr = SBR()
