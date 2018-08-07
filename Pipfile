@@ -7,6 +7,7 @@ name = "pypi"
 requests = "*"
 flask = "*"
 prometheus-client = "*"
+"bs4" = "*"
 
 [dev-packages]
 

@@ -10,7 +10,11 @@ The SBR OpenStack Supppoter bot project is sponsered by Red Hat Inc.It is an app
 
 #### Deploy the SBR OpenStack Supporter Bot Project on OpenShift:
 - Using Ansible Playbook:
-`ansible-playbook --extra-var="OCP_URL=<openshit_url>  OCP_TOKEN=<openshift_service_account_token> SBR_INFRA_NAMESPACE= <openshift_namespace> SBR_APPLICATION_NAMESPACE=<openshift_namespace>" playbooks/provision.yaml`
+```ansible
+ansible-playbook --extra-var="OCP_URL=<openshit_url>  OCP_TOKEN=<openshift_service_account_token> SBR_INFRA_NAMESPACE= <openshift_namespace> SBR_APPLICATION_NAMESPACE=<openshift_namespace>" playbooks/provision.yaml
+```
 
 - Delete the deployment:
-`ansible-playbook --extra-var="OCP_URL=<openshit_ur>  OCP_TOKEN=<openshift_service_account_token> SBR_INFRA_NAMESPACE=<openshift_namespace> SBR_APPLICATION_NAMESPACE=<openshift_namespace>" playbooks/deprovision.yaml`
+```ansible
+ansible-playbook --extra-var="OCP_URL=<openshit_ur>  OCP_TOKEN=<openshift_service_account_token> SBR_INFRA_NAMESPACE=<openshift_namespace> SBR_APPLICATION_NAMESPACE=<openshift_namespace>" playbooks/deprovision.yaml
+```

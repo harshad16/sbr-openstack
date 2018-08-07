@@ -14,6 +14,13 @@
     <!-- Custom styles for this template -->
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/patternfly/3.24.0/css/patternfly.min.css">
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/patternfly/3.24.0/css/patternfly-additions.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script type="text/javascript">
+      function loading(){
+          $("#loading").show();
+          $("#content").hide();       
+      }
+    </script>
     <style type="text/css">
       html,body {
         height: 100%;
@@ -56,6 +63,13 @@
       .form-signin .form-control:focus {
         z-index: 2;
       }
+
+      div#loading {
+        width: 20%;
+        margin: 0 auto;
+        display: none;
+        cursor: wait;
+      }
     </style>
   </head>
 
@@ -65,8 +79,8 @@
         <img src="http://www.patternfly.org/assets/img/redhat.svg">
       </div>
     </nav>
-    
-    <div class="card">
+    <div id="loading"> <h1>Processing Ticket</h1><br><img src="/static/loadingimage.gif"></div>
+    <div class="card" id="content">
       <div class="card-block">
 
           <!--Header-->
@@ -106,7 +120,7 @@
             </div>
             </br>
 
-            <button class="btn btn-lg btn-primary btn-block" type="submit">Submit</button>
+            <button class="btn btn-lg btn-primary btn-block" type="submit" onclick="loading();">Submit</button>
           </form> 
       </div>
     </div>
