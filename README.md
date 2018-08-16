@@ -34,6 +34,20 @@ The application (SBR OpenStack Supporter Bot) serves as automation for the custo
 - Gather solutions for the failed plugins.
 - Publish the best of the solutions as a private comments on the case.
 
+
+:pencil: **Feature**: Integrated Prometheus client in the application. If any error occurs, Prometheus metrics are pushed to pushgateway.
+
+- To Setup Pushgateway in OpenShift Namespace:
+
+	```shell
+	$ oc tag prom/pushgateway:latest prom/pushgateway:latest
+	$ oc new-app --docker-image=prom/pushgateway --name=pushgateway
+	$ oc expose svc/pushgateway
+	```
+	- Pull the Prometheus image to OpenShift Namespace
+	- Creates a Deploymentconfig and service
+	- Expose the service to a route
+
 ### Running the Application
 
 The Application can be cloned or downloaded from Github or else use the following code:

@@ -27,6 +27,7 @@ from prometheus_client import CollectorRegistry, pushadd_to_gateway, Gauge
 _LOGGER = logging.getLogger(__name__)
 prometheus_registry = CollectorRegistry()
 
+
 class SBR:
     """
     SBR OpenStack Supporter/Datahub Bot
@@ -41,11 +42,8 @@ class SBR:
     - Execute Citellus(SBR OpenStack Support Team Validation tool) on to the SOS Report.
     - Gather solutions for the failed plugins.
     - Publish the best of the solutions as a private comments on the case.
-
-    TODO: 
-        1. Integrate Logging functionality
-        2. Added Raise functionality where ever necessary
     """
+
     def __init__(self):
         self.ticket = os.getenv('TICKET')
         self.username = os.getenv('USERNAME')
@@ -55,14 +53,13 @@ class SBR:
         password_file = open(self.pwd_dir, 'r')
         self.password = password_file.read()
         self.path = f'/cases/{self.ticket}/attachments'
-        
+
         if 'redhat.com' in self.username:
             self.user = re.search(r'[^@]+', self.username).group(0)
         else:
             self.user = self.username
 
         self.redhat_solutions = 'https://access.redhat.com/solutions'
-
 
     def get_ticket_config(self):
         """
@@ -84,13 +81,14 @@ class SBR:
             remote_port = "22"
             remote_directory = f'/fubar/{self.ticket}'
             _LOGGER.info('Server `fubar` is selected for fetching ticket attachments')
+        else:
+            pass
 
         # create a storage for the ticket if not exists
         if not os.path.exists(f'/cases/{self.ticket}'):
             os.makedirs(f'/cases/{self.ticket}')
 
         return remote_host, remote_port, remote_directory
-
 
     def ssh_copy_attachments(self, remote_host, remote_port, remote_directory):
         """
@@ -104,14 +102,17 @@ class SBR:
                 _LOGGER.info('Successfully fetched the attachments')
             elif scp_process.returncode == 1:
                 metric_name = self.job + '-scp-error'
-                metric_name = metric_name.replace('-','_')
-                job_comment_metric = Gauge(metric_name, 'unable to scp ticket attachments as the file is not found' , registry=prometheus_registry)
+                metric_name = metric_name.replace('-', '_')
+                job_comment_metric = Gauge(metric_name, 'unable to scp ticket attachments as the file is not found',
+                                           registry=prometheus_registry)
                 job_comment_metric.inc(1)
                 _LOGGER.error('Unable to fetch attachments as file is not found')
             elif scp_process.returncode == 5:
                 metric_name = self.job + '-scp-error'
-                metric_name = metric_name.replace('-','_')
-                job_comment_metric = Gauge(metric_name, 'unable to scp ticket attachments due to authentication failure' , registry=prometheus_registry)
+                metric_name = metric_name.replace('-', '_')
+                job_comment_metric = Gauge(metric_name,
+                                           'unable to scp ticket attachments due to authentication failure',
+                                           registry=prometheus_registry)
                 job_comment_metric.inc(5)
                 _LOGGER.error('Unable to fetch attachments due to authentication')
             else:
@@ -121,13 +122,12 @@ class SBR:
         except Exception as e:
             # raise Exception('scp failed!, fetching attachments is not possible.')
             metric_name = self.job + '-scp-error'
-            metric_name = metric_name.replace('-','_')
-            job_comment_metric = Gauge(metric_name, 'unable to scp ticket attachments' , registry=prometheus_registry)
+            metric_name = metric_name.replace('-', '_')
+            job_comment_metric = Gauge(metric_name, 'unable to scp ticket attachments', registry=prometheus_registry)
             job_comment_metric.inc(2)
             _LOGGER.error('scp failed!, fetching attachments is not possible.')
-            pass 
+            pass
         return True
-
 
     def get_all_sosreports(self):
         """
@@ -136,7 +136,7 @@ class SBR:
         sosreports = list()
         for sosreport in os.listdir(self.path):
             if sosreport.startswith("."):
-                    continue
+                continue
             if tarfile.is_tarfile(f'{self.path}/{sosreport}'):
                 sosreport_tar_obj = tarfile.open(f'{self.path}/{sosreport}')
                 sosreport_tar_obj.extractall(path=self.path)
@@ -147,21 +147,20 @@ class SBR:
             elif zipfile.is_zipfile(f'{self.path}/{sosreport}'):
                 sosreport_zip_obj = zipfile.ZipFile(f'{self.path}/{sosreport}')
                 sosreport_zip_obj.extractall(path=f'{self.path}')
-                os.chmod(f'{self.path}/{sosreport_tar_obj.getnames()[0]}', 0o755)
+                os.chmod(f'{self.path}/{sosreport_zip_obj.getnames()[0]}', 0o755)
                 os.remove(f'{self.path}/{sosreport}')
-                sosreports.append(sosreport_tar_obj.getnames()[0])
+                sosreports.append(sosreport_zip_obj.getnames()[0])
                 _LOGGER.info('Extracted the zipped sosreport from attachments')
             else:
                 _LOGGER.error('Failed sosreport extraction from attachments')
                 # raise Exception('Failed sosreport extraction from attachments')
                 metric_name = self.job + '-sosreport-extract'
-                metric_name = metric_name.replace('-','_')
-                job_comment_metric = Gauge(metric_name, 'unable to extract sosreport' , registry=prometheus_registry)
+                metric_name = metric_name.replace('-', '_')
+                job_comment_metric = Gauge(metric_name, 'unable to extract sosreport', registry=prometheus_registry)
                 job_comment_metric.inc()
                 return []
 
         return sosreports
-
 
     def check_sosreports(self, directory):
         """
@@ -170,11 +169,11 @@ class SBR:
         if "soscleaner" in directory:
             return False
 
-        if os.path.exists(f"{directory}/sos_commands") and os.path.exists(f"{directory}/hostname") and os.path.exists(f"{directory}/date"):
+        if os.path.exists(f"{directory}/sos_commands") and os.path.exists(f"{directory}/hostname") and os.path.exists(
+                f"{directory}/date"):
             return True
-        
-        return False
 
+        return False
 
     def execute_citellus(self, sosreport_dir):
         """
@@ -184,15 +183,15 @@ class SBR:
             os.system(f'python3 citellus/citellus.py {sosreport_dir}')
             _LOGGER.info('Citellus execution on the sosreport is completed successfully')
             return True
-        else: 
+        else:
             _LOGGER.error('Unable to provide sosreport to Citellus for execution')
             metric_name = self.job + '-sosreport-error'
-            metric_name = metric_name.replace('-','_')
-            job_comment_metric = Gauge(metric_name, 'unable to send sosreport to citellus' , registry=prometheus_registry)
+            metric_name = metric_name.replace('-', '_')
+            job_comment_metric = Gauge(metric_name, 'unable to send sosreport to citellus',
+                                       registry=prometheus_registry)
             job_comment_metric.inc()
             # raise Exception('Unable to provide sosreport to Citellus for execution')
             return False
-
 
     def get_solutions(self, sosreport_dir):
         """
@@ -203,7 +202,8 @@ class SBR:
 
         hash_map = []
         solution_data = []
-        
+        solution = ''
+
         for hash_key, plugin in report['results'].items():
             if plugin.get('result').get('rc') == 20:
                 if plugin.get('kb') and self.redhat_solutions in plugin.get('kb'):
@@ -218,11 +218,12 @@ class SBR:
                             try:
                                 resolution = tree.find('{http://www.redhat.com/gss/strata}resolution')
                                 solution = resolution.find('{http://www.redhat.com/gss/strata}text').text
-                            except:
+                            except Exception as e:
                                 _LOGGER.error('xml parsing of the solution failed!')
                                 metric_name = self.job + '-solution-xml-parse'
-                                metric_name = metric_name.replace('-','_')
-                                job_comment_metric = Gauge(metric_name, 'solution xml parsing failed' , registry=prometheus_registry)
+                                metric_name = metric_name.replace('-', '_')
+                                job_comment_metric = Gauge(metric_name, 'solution xml parsing failed',
+                                                           registry=prometheus_registry)
                                 job_comment_metric.inc()
                                 # raise Exception('xml parsing of the solution failed!')
                                 pass
@@ -231,8 +232,9 @@ class SBR:
                         else:
                             _LOGGER.error('Request to solution api failed!')
                             metric_name = self.job + '-solution-request'
-                            metric_name = metric_name.replace('-','_')
-                            job_comment_metric = Gauge(metric_name, 'solution request failed due to authentication' , registry=prometheus_registry)
+                            metric_name = metric_name.replace('-', '_')
+                            job_comment_metric = Gauge(metric_name, 'solution request failed due to authentication',
+                                                       registry=prometheus_registry)
                             job_comment_metric.inc()
                             # raise Exception('Request to solution api failed!')
                             pass
@@ -241,14 +243,13 @@ class SBR:
         solution_data = sorted(solution_data, key=lambda val: val['priority'], reverse=True)
         return solution_data
 
-
     def generate_comments(self, solution_data):
         """
         Generate the top 5 critical comments for solving the failure.
         """
         comment = "HI,\n"
         link = ""
-        for ind,sol in enumerate(solution_data):
+        for ind, sol in enumerate(solution_data):
             if 'solution' in sol.get('result'):
                 comment += f"Error: {sol.get('description')} \n and {sol.get('result').get('err')}\n"
                 comment += f"Solution: {sol.get('result').get('solution')}\n"
@@ -261,12 +262,11 @@ class SBR:
                 link += sol.get('kb') + '\n'
             else:
                 comment += f"\nError: {sol.get('description')}\n and {sol.get('result').get('err')}\n"
-                comment += f"---------------------------------------------------------------------\n"   
+                comment += f"---------------------------------------------------------------------\n"
             if ind == 4:
                 _LOGGER.info('Top 5 solutions are found for the failed plugins')
                 break
         return comment, link
-
 
     def publish_comments(self, comment, link):
         """
@@ -285,27 +285,27 @@ class SBR:
 
         comment_response = requests.post(comment_endpoint, json=payload, auth=(self.username, self.password))
         if comment_response.status_code == 200 or comment_response.status_code == 201:
-            return True
             _LOGGER.info('comment to customer cases was successfully published')
+            return True
         else:
             _LOGGER.error('comment to customer cases was NOT successfully published')
             metric_name = self.job + '-publish-comment'
-            metric_name = metric_name.replace('-','_')
-            job_comment_metric = Gauge(metric_name, 'Error of comment publish on customer case' , registry=prometheus_registry)
+            metric_name = metric_name.replace('-', '_')
+            job_comment_metric = Gauge(metric_name, 'Error of comment publish on customer case',
+                                       registry=prometheus_registry)
             job_comment_metric.inc()
             # raise Exception('comment to customer cases was NOT successfully published')
             return False
 
-    
     def main(self):
         """ 
         Execute SBR OpenStack bot.
         """
         job_name = self.job + '-job-exec-time'
-        job_name = job_name.replace('-','_')
-        job_metric_time = Gauge(job_name, 'Runtime of application job execution' , registry=prometheus_registry)
+        job_name = job_name.replace('-', '_')
+        job_metric_time = Gauge(job_name, 'Runtime of application job execution', registry=prometheus_registry)
         with job_metric_time.time():
-            solutions=list()
+            solutions = list()
             complete = False
             remote_host, remote_port, remote_dir = self.get_ticket_config()
             if remote_host and remote_port and remote_dir:
@@ -313,27 +313,27 @@ class SBR:
                 if os.path.isdir(self.path):
                     sosreports = self.get_all_sosreports()
                     for sosreport in sosreports:
-                        execution_path=f'{self.path}/{sosreport}' 
+                        execution_path = f"{self.path}/{sosreport}"
                         self.execute_citellus(execution_path)
                         solution_data = self.get_solutions(execution_path)
                         solutions.append(solution_data)
-                        comment,link = self.generate_comments(solution_data)
+                        comment, link = self.generate_comments(solution_data)
                         if comment:
-                            complete=self.publish_comments(comment,link)
+                            complete = self.publish_comments(comment, link)
 
             if complete:
                 _LOGGER.info('Script successfully completed')
             else:
                 # raise Exception('Script Unable to process the ticket')
                 metric_name = self.job + '-application-failed'
-                metric_name = metric_name.replace('-','_')
-                job_comment_metric = Gauge(metric_name, 'Script Unable to process the ticket' , registry=prometheus_registry)
+                metric_name = metric_name.replace('-', '_')
+                job_comment_metric = Gauge(metric_name, 'Script Unable to process the ticket',
+                                           registry=prometheus_registry)
                 job_comment_metric.inc()
                 _LOGGER.info('Script Unable to process the ticket')
         self.pushgateway(self.job)
 
-
-    def pushgateway(self,job_name):
+    def pushgateway(self, job_name):
         _PUSH_GATEWAY_HOST = os.getenv('PROMETHEUS_PUSHGATEWAY_HOST')
         _PUSH_GATEWAY_PORT = os.getenv('PROMETHEUS_PUSHGATEWAY_PORT')
         if _PUSH_GATEWAY_HOST and _PUSH_GATEWAY_PORT:
