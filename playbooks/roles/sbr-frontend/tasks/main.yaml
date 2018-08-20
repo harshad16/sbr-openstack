@@ -5,7 +5,7 @@
     ignore_errors: true
     changed_when: false
 
-    
+
   - name: "check if SBR OCP secret exists"
     command: "oc get secret --namespace {{ SBR_APPLICATION_NAMESPACE }} sbr-ocp-secret"
     register: secret_exists

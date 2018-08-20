@@ -4,9 +4,9 @@ It is an application for Red Hat SBR OpenStack Support Team.
 The application serves as automation for the customer case ticket processing.
 
 Author: Harshad Reddy Nalla
-Team: Thoth 
+Team: Thoth
+Department: AICoE
 Company: Red Hat Inc.
-
 """
 import os
 import re
@@ -20,7 +20,7 @@ import zipfile
 import requests
 import logging
 import xml.etree.ElementTree as ET
-from datetime import datetime
+
 
 from prometheus_client import CollectorRegistry, pushadd_to_gateway, Gauge
 
@@ -46,18 +46,22 @@ class SBR:
 
     def __init__(self):
         self.ticket = os.getenv('TICKET')
-        self.username = os.getenv('USERNAME')
+        self.rh_username = os.getenv('RHUSERNAME')
+        self.rhn_username = os.getenv('RHNUSERNAME')
         self.server = os.getenv('SERVER')
         self.job = os.getenv('JOBNAME')
-        self.pwd_dir = '/secret/passwordfile'
-        password_file = open(self.pwd_dir, 'r')
-        self.password = password_file.read()
+        self.rh_pwd_dir = '/secret/rhpasswordfile'
+        password_file = open(self.rh_pwd_dir, 'r')
+        self.rh_password = password_file.read()
+        self.rhn_pwd_dir = '/secret/rhnpasswordfile'
+        password_file = open(self.rhn_pwd_dir, 'r')
+        self.rhn_password = password_file.read()
         self.path = f'/cases/{self.ticket}/attachments'
 
-        if 'redhat.com' in self.username:
-            self.user = re.search(r'[^@]+', self.username).group(0)
+        if 'redhat.com' in self.rh_username:
+            self.user = re.search(r'[^@]+', self.rh_username).group(0)
         else:
-            self.user = self.username
+            self.user = self.rh_username
 
         self.redhat_solutions = 'https://access.redhat.com/solutions'
 
@@ -71,10 +75,15 @@ class SBR:
         if self.server == "collabrador":
             remote_host = "s01.gss.hst.phx2.redhat.com"
             remote_port = "22"
-            remote_directory = f'/srv/cases/0{self.ticket[0:2]}/{self.ticket[2:5]}/{self.ticket[5:8]}/attachments'
+            print("Provided Ticket number is: ", int(self.ticket))
             if int(self.ticket) > 1599999:
                 ticket_split = '/'.join([self.ticket[i + 2: i + 3] for i in range(len(self.ticket) - 1)])
-                remote_directory = f'/srv/cases/0{self.ticket[0:2]}/{ticket_split}attachments'
+                print("ticket split is: ", ticket_split)
+                remote_directory = f"/srv/cases/0{self.ticket[0:2]}/{ticket_split}attachments"
+                print("remote_directory is: ", remote_directory)
+            else:
+                remote_directory = f"/srv/cases/0{self.ticket[0:2]}/{self.ticket[2:5]}/{self.ticket[5:8]}/attachments"
+                print("remote_directory is: ", remote_directory)
             _LOGGER.info('Server `collabrador` is selected for fetching ticket attachments')
         elif self.server == "fubar":
             remote_host = "fubar.gsslab.rdu2.redhat.com"
@@ -82,7 +91,7 @@ class SBR:
             remote_directory = f'/fubar/{self.ticket}'
             _LOGGER.info('Server `fubar` is selected for fetching ticket attachments')
         else:
-            pass
+            raise Exception('Not know server is being accessed!')
 
         # create a storage for the ticket if not exists
         if not os.path.exists(f'/cases/{self.ticket}'):
@@ -95,8 +104,9 @@ class SBR:
         Copy the ticket attachments from the storage server to /cases/<ticket> directory.
         """
         try:
-            escape_known_host = f'-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
-            scp_command = f'sshpass -f {self.pwd_dir} scp {escape_known_host} -r -P {remote_port} {self.user}@{remote_host}:{remote_directory} /cases/{self.ticket}'
+            print("Ticket attachment Directory: ", remote_directory)
+            escape_known_host = f"-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+            scp_command = f"sshpass -f {self.rh_pwd_dir} scp {escape_known_host} -r -P {remote_port} {self.user}@{remote_host}:{remote_directory} /cases/{self.ticket}"
             scp_process = subprocess.run(scp_command.split(' '))
             if scp_process.returncode == 0:
                 _LOGGER.info('Successfully fetched the attachments')
@@ -117,27 +127,27 @@ class SBR:
                 _LOGGER.error('Unable to fetch attachments due to authentication')
             else:
                 _LOGGER.error(f'Unable to fetch attachments due to error code {scp_process.returncode}')
-                # raise Exception('scp failed!,Unable to fetch attachments.')
-                pass
-        except Exception as e:
-            # raise Exception('scp failed!, fetching attachments is not possible.')
+                raise Exception('scp failed!,Unable to fetch attachments.')
+        except:
             metric_name = self.job + '-scp-error'
             metric_name = metric_name.replace('-', '_')
             job_comment_metric = Gauge(metric_name, 'unable to scp ticket attachments', registry=prometheus_registry)
             job_comment_metric.inc(2)
             _LOGGER.error('scp failed!, fetching attachments is not possible.')
-            pass
+            raise Exception('scp failed!, fetching attachments is not possible.')
         return True
 
     def get_all_sosreports(self):
         """
         Extract the SOS report based upon there compression type.
         """
+        print('Extracting the compressed file!')
         sosreports = list()
         for sosreport in os.listdir(self.path):
             if sosreport.startswith("."):
                 continue
             if tarfile.is_tarfile(f'{self.path}/{sosreport}'):
+                print("sosreport is compressed as tar file")
                 sosreport_tar_obj = tarfile.open(f'{self.path}/{sosreport}')
                 sosreport_tar_obj.extractall(path=self.path)
                 os.chmod(f'{self.path}/{sosreport_tar_obj.getnames()[0]}', 0o755)
@@ -145,20 +155,23 @@ class SBR:
                 sosreports.append(sosreport_tar_obj.getnames()[0])
                 _LOGGER.info('Extracted the tar compressed sosreport from attachments')
             elif zipfile.is_zipfile(f'{self.path}/{sosreport}'):
+                print("sosreport is compressed as zip file")
                 sosreport_zip_obj = zipfile.ZipFile(f'{self.path}/{sosreport}')
                 sosreport_zip_obj.extractall(path=f'{self.path}')
-                os.chmod(f'{self.path}/{sosreport_zip_obj.getnames()[0]}', 0o755)
+                os.chmod(f'{self.path}/{sosreport_zip_obj.namelist()[0]}', 0o755)
                 os.remove(f'{self.path}/{sosreport}')
-                sosreports.append(sosreport_zip_obj.getnames()[0])
+                sosreports.append(sosreport_zip_obj.namelist()[0])
                 _LOGGER.info('Extracted the zipped sosreport from attachments')
             else:
+                print("failed sosreport extraction! compression type is not tar or zip!")
                 _LOGGER.error('Failed sosreport extraction from attachments')
-                # raise Exception('Failed sosreport extraction from attachments')
-                metric_name = self.job + '-sosreport-extract'
+                metric_count = 0
+                metric_name = self.job + '-sosreport-extract-' + str(metric_count)
+                metric_count += 1
                 metric_name = metric_name.replace('-', '_')
                 job_comment_metric = Gauge(metric_name, 'unable to extract sosreport', registry=prometheus_registry)
                 job_comment_metric.inc()
-                return []
+                raise Exception('Failed sosreport extraction from attachments')
 
         return sosreports
 
@@ -190,8 +203,7 @@ class SBR:
             job_comment_metric = Gauge(metric_name, 'unable to send sosreport to citellus',
                                        registry=prometheus_registry)
             job_comment_metric.inc()
-            # raise Exception('Unable to provide sosreport to Citellus for execution')
-            return False
+            raise Exception('Unable to provide sosreport to Citellus for execution')
 
     def get_solutions(self, sosreport_dir):
         """
@@ -211,7 +223,7 @@ class SBR:
                     if kbase_id not in hash_map:
                         hash_map.append(kbase_id)
                         url = 'https://api.access.redhat.com/rs/solutions/' + kbase_id
-                        response = requests.get(url, auth=(self.username, self.password))
+                        response = requests.get(url, auth=(self.rhn_username, self.rhn_password))
                         if response.status_code == 200:
                             xml = response.text
                             tree = ET.fromstring(xml)
@@ -220,23 +232,21 @@ class SBR:
                                 solution = resolution.find('{http://www.redhat.com/gss/strata}text').text
                             except Exception as e:
                                 _LOGGER.error('xml parsing of the solution failed!')
-                                metric_name = self.job + '-solution-xml-parse'
+                                metric_name = self.job + '-solution-xml-parse-' + str(kbase_id)
                                 metric_name = metric_name.replace('-', '_')
                                 job_comment_metric = Gauge(metric_name, 'solution xml parsing failed',
                                                            registry=prometheus_registry)
                                 job_comment_metric.inc()
-                                # raise Exception('xml parsing of the solution failed!')
                                 pass
                             if solution:
                                 plugin['result']['solution'] = solution
                         else:
                             _LOGGER.error('Request to solution api failed!')
-                            metric_name = self.job + '-solution-request'
+                            metric_name = self.job + '-solution-request-' + str(kbase_id)
                             metric_name = metric_name.replace('-', '_')
                             job_comment_metric = Gauge(metric_name, 'solution request failed due to authentication',
                                                        registry=prometheus_registry)
                             job_comment_metric.inc()
-                            # raise Exception('Request to solution api failed!')
                             pass
                 solution_data.append(plugin)
 
@@ -272,7 +282,6 @@ class SBR:
         """
         Publish the comment on the customer case.
         """
-        time = datetime.now().strftime('%Y-%m-%dT%H:%M:%SZ')
         comment_endpoint = f'https://api.access.redhat.com/rs/cases/{self.ticket}/comments'
         payload = {
             "label": "Solution by the bot",
@@ -283,7 +292,7 @@ class SBR:
             "public": False
         }
 
-        comment_response = requests.post(comment_endpoint, json=payload, auth=(self.username, self.password))
+        comment_response = requests.post(comment_endpoint, json=payload, auth=(self.rhn_username, self.rhn_password))
         if comment_response.status_code == 200 or comment_response.status_code == 201:
             _LOGGER.info('comment to customer cases was successfully published')
             return True
@@ -294,44 +303,7 @@ class SBR:
             job_comment_metric = Gauge(metric_name, 'Error of comment publish on customer case',
                                        registry=prometheus_registry)
             job_comment_metric.inc()
-            # raise Exception('comment to customer cases was NOT successfully published')
             return False
-
-    def main(self):
-        """ 
-        Execute SBR OpenStack bot.
-        """
-        job_name = self.job + '-job-exec-time'
-        job_name = job_name.replace('-', '_')
-        job_metric_time = Gauge(job_name, 'Runtime of application job execution', registry=prometheus_registry)
-        with job_metric_time.time():
-            solutions = list()
-            complete = False
-            remote_host, remote_port, remote_dir = self.get_ticket_config()
-            if remote_host and remote_port and remote_dir:
-                self.ssh_copy_attachments(remote_host, remote_port, remote_dir)
-                if os.path.isdir(self.path):
-                    sosreports = self.get_all_sosreports()
-                    for sosreport in sosreports:
-                        execution_path = f"{self.path}/{sosreport}"
-                        self.execute_citellus(execution_path)
-                        solution_data = self.get_solutions(execution_path)
-                        solutions.append(solution_data)
-                        comment, link = self.generate_comments(solution_data)
-                        if comment:
-                            complete = self.publish_comments(comment, link)
-
-            if complete:
-                _LOGGER.info('Script successfully completed')
-            else:
-                # raise Exception('Script Unable to process the ticket')
-                metric_name = self.job + '-application-failed'
-                metric_name = metric_name.replace('-', '_')
-                job_comment_metric = Gauge(metric_name, 'Script Unable to process the ticket',
-                                           registry=prometheus_registry)
-                job_comment_metric.inc()
-                _LOGGER.info('Script Unable to process the ticket')
-        self.pushgateway(self.job)
 
     def pushgateway(self, job_name):
         _PUSH_GATEWAY_HOST = os.getenv('PROMETHEUS_PUSHGATEWAY_HOST')
@@ -343,6 +315,47 @@ class SBR:
                 pushadd_to_gateway(push_gateway, job=job_name, registry=prometheus_registry)
             except Exception as e:
                 _LOGGER.exception('An error occurred pushing the metrics: {}'.format(str(e)))
+
+    def main(self):
+        """ 
+        Execute SBR OpenStack bot.
+        """
+        job_name = self.job + '-job-exec-time'
+        job_name = job_name.replace('-', '_')
+        job_metric_time = Gauge(job_name, 'Runtime of application job execution', registry=prometheus_registry)
+        try:
+            with job_metric_time.time():
+                solutions = list()
+                complete = False
+                remote_host, remote_port, remote_dir = self.get_ticket_config()
+                if remote_host and remote_port and remote_dir:
+                    self.ssh_copy_attachments(remote_host, remote_port, remote_dir)
+                    if os.path.isdir(self.path):
+                        sosreports = self.get_all_sosreports()
+                        for sosreport in sosreports:
+                            execution_path = f"{self.path}/{sosreport}"
+                            self.execute_citellus(execution_path)
+                            solution_data = self.get_solutions(execution_path)
+                            solutions.append(solution_data)
+                            comment, link = self.generate_comments(solution_data)
+                            print("Comment:", comment)
+                            complete = True
+                            # if comment:
+                            #     complete = self.publish_comments(comment, link)
+
+                if complete:
+                    _LOGGER.info('Script successfully completed')
+                else:
+                    metric_name = self.job + '-application-failed'
+                    metric_name = metric_name.replace('-', '_')
+                    job_comment_metric = Gauge(metric_name, 'Script Unable to process the ticket',
+                                               registry=prometheus_registry)
+                    job_comment_metric.inc()
+                    _LOGGER.info('Script Unable to process the ticket')
+                    raise Exception('Script Unable to process the ticket')
+        except Exception as e:
+            print("Script Failed due to", e)
+        self.pushgateway(self.job)
 
 
 if __name__ == '__main__':
