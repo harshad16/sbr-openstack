@@ -28,13 +28,10 @@ def process_ticket():
     case_url = 'https://access.redhat.com/support/cases/#/case/{}'.format(str(request.form.get("ticket")))
     ERROR = []
     status_check = True
-    # print("rhnusername: ", request.form.get("rhn_username"),
-    #     "rhnpassword: ", request.form.get("rhn_password"),
-    #     "rhusername: ", request.form.get("rh_username"),
-    #     "rhpassword: ", request.form.get("rh_password"),
-    #     "ticket: ", request.form.get("ticket"),
-    #     "server: ", request.form.get("server"),
-    #     "checkbox:", request.form.get("no_debug"))
+    rhnusername = request.form.get("rhn_username") if request.form.get("rhn_username") else request.form.get(
+        "rh_username")
+    rhnpassword = request.form.get("rhn_password") if request.form.get("rhn_password") else request.form.get(
+        "rh_password")
     if request.method == 'POST':
         namespace = ocl_namespace if ocl_namespace else ''  # set default here
         url = ocl_url if ocl_url else ''  # set default here
@@ -51,10 +48,10 @@ def process_ticket():
             },
             "type": "kubernetes.io/basic-auth",
             "stringData": {
-                "rhnusername": request.form.get("rhn_username"),
-                "rhnpassword": request.form.get("rhn_password"),
-                "rhusername": request.form.get("rh_username"),
-                "rhpassword": request.form.get("rh_password"),
+                "rhnusername": rhnusername,
+                "rhnpassword": rhnpassword,
+                "username": request.form.get("rh_username"),
+                "password": request.form.get("rh_password"),
                 "ticket": request.form.get("ticket"),
                 "server": request.form.get("server")
             }
@@ -107,7 +104,7 @@ def process_ticket():
                                         "name": "RHUSERNAME",
                                         "valueFrom": {
                                             "secretKeyRef": {
-                                                "key": "rhusername",
+                                                "key": "username",
                                                 "name": secret_name
                                             }
                                         }
@@ -164,7 +161,7 @@ def process_ticket():
                                             "mode": 384
                                         },
                                         {
-                                            "key": "rhpassword",
+                                            "key": "password",
                                             "path": "rhpasswordfile",
                                             "mode": 384
                                         }
@@ -188,7 +185,7 @@ def process_ticket():
 
         if request.form.get("no_debug") is not None:
             return render_template('end.html', success=success, ticket=str(request.form.get("ticket")), url=case_url,
-                           solution=solution, ERROR=ERROR)
+                                   solution=solution, ERROR=ERROR)
 
         while status_check:
             # 5 sec delay for stopping unneccessary requests
@@ -246,16 +243,17 @@ def process_ticket():
                         error_check = job_name + '-scp-error'
                         error_check = error_check.replace('-', '_')
                         if error_check in error_dict and error_dict[error_check] == '1':
-                            ERROR.append('File Not Found for ticket {} in the {} Server'.format(request.form.get('ticket'),
-                                                                                           request.form.get('server')))
+                            ERROR.append(
+                                'File Not Found for ticket {} in the {} Server'.format(request.form.get('ticket'),
+                                                                                       request.form.get('server')))
                         elif error_check in error_dict and error_dict[error_check] == '5':
-                            ERROR.append('AUTHENTICATION FAILURE for Red Hat Kerberos')
+                            ERROR.append('Authentication failed for Red Hat Kerberos')
                         elif error_check in error_dict and error_dict[error_check] == '2':
                             ERROR.append('SCP of attachment for ticket {} from the {} server failed'.format(
                                 request.form.get('ticket'), request.form.get('server')))
 
-                        if str(job_name + '-solution-request-').replace('-', '_') in error_dict:
-                            ERROR.append('API Request failure due to Authentication of RHN')
+                        if str(job_name + '-solution-request').replace('-', '_') in error_dict:
+                            ERROR.append('API Request failed due to Authentication of RHN account')
                         # print(ERROR)
                     except Exception as e:
                         print('Problem occured in scrapping prometheus metrics!')

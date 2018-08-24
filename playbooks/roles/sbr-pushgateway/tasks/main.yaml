@@ -4,16 +4,21 @@
     register: project_exists
     ignore_errors: true
     changed_when: false
-    
-  - name: importing required Prometheus ImageStreamTags from upstream Registries
-    command: "oc tag --namespace {{ SBR_INFRA_NAMESPACE }} prom/pushgateway:latest prom/pushgateway:latest"
+
+  - name: "check if Prometheus pushgateway service exists"
+    command: "oc get service --namespace {{ SBR_APPLICATION_NAMESPACE }} pushgateway"
+    register: service_exists
+    ignore_errors: true
+    changed_when: false
 
   - name: create Prometheus pushgateway deployment, and service
     command: oc new-app --docker-image=prom/pushgateway --name=pushgateway
     ignore_errors: true
     changed_when: false
+    when: service_exists is failed
 
   - name: Expose the route
-    command: oc expose svc/pushgatewayk
+    command: oc expose svc/pushgateway
     ignore_errors: true
     changed_when: false
+    when: service_exists is failed

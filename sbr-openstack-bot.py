@@ -11,7 +11,7 @@ Company: Red Hat Inc.
 import os
 import re
 import json
-
+import traceback
 import subprocess
 
 import tarfile
@@ -78,12 +78,9 @@ class SBR:
             print("Provided Ticket number is: ", int(self.ticket))
             if int(self.ticket) > 1599999:
                 ticket_split = '/'.join([self.ticket[i + 2: i + 3] for i in range(len(self.ticket) - 1)])
-                print("ticket split is: ", ticket_split)
                 remote_directory = f"/srv/cases/0{self.ticket[0:2]}/{ticket_split}attachments"
-                print("remote_directory is: ", remote_directory)
             else:
                 remote_directory = f"/srv/cases/0{self.ticket[0:2]}/{self.ticket[2:5]}/{self.ticket[5:8]}/attachments"
-                print("remote_directory is: ", remote_directory)
             _LOGGER.info('Server `collabrador` is selected for fetching ticket attachments')
         elif self.server == "fubar":
             remote_host = "fubar.gsslab.rdu2.redhat.com"
@@ -143,35 +140,38 @@ class SBR:
         """
         print('Extracting the compressed file!')
         sosreports = list()
+        metric_count = 0
         for sosreport in os.listdir(self.path):
-            if sosreport.startswith("."):
-                continue
-            if tarfile.is_tarfile(f'{self.path}/{sosreport}'):
-                print("sosreport is compressed as tar file")
-                sosreport_tar_obj = tarfile.open(f'{self.path}/{sosreport}')
-                sosreport_tar_obj.extractall(path=self.path)
-                os.chmod(f'{self.path}/{sosreport_tar_obj.getnames()[0]}', 0o755)
-                os.remove(f'{self.path}/{sosreport}')
-                sosreports.append(sosreport_tar_obj.getnames()[0])
-                _LOGGER.info('Extracted the tar compressed sosreport from attachments')
-            elif zipfile.is_zipfile(f'{self.path}/{sosreport}'):
-                print("sosreport is compressed as zip file")
-                sosreport_zip_obj = zipfile.ZipFile(f'{self.path}/{sosreport}')
-                sosreport_zip_obj.extractall(path=f'{self.path}')
-                os.chmod(f'{self.path}/{sosreport_zip_obj.namelist()[0]}', 0o755)
-                os.remove(f'{self.path}/{sosreport}')
-                sosreports.append(sosreport_zip_obj.namelist()[0])
-                _LOGGER.info('Extracted the zipped sosreport from attachments')
-            else:
-                print("failed sosreport extraction! compression type is not tar or zip!")
-                _LOGGER.error('Failed sosreport extraction from attachments')
-                metric_count = 0
+            try:
+                if sosreport.startswith("."):
+                    continue
+                if tarfile.is_tarfile(f'{self.path}/{sosreport}'):
+                    print("sosreport is compressed as tar file")
+                    sosreport_tar_obj = tarfile.open(f'{self.path}/{sosreport}')
+                    sosreport_tar_obj.extractall(path=self.path)
+                    os.chmod(f'{self.path}/{sosreport_tar_obj.getnames()[0]}', 0o755)
+                    os.remove(f'{self.path}/{sosreport}')
+                    sosreports.append(sosreport_tar_obj.getnames()[0])
+                    _LOGGER.info('Extracted the tar compressed sosreport from attachments')
+                elif zipfile.is_zipfile(f'{self.path}/{sosreport}'):
+                    print("sosreport is compressed as zip file")
+                    sosreport_zip_obj = zipfile.ZipFile(f'{self.path}/{sosreport}')
+                    sosreport_zip_obj.extractall(path=f'{self.path}')
+                    os.chmod(f'{self.path}/{sosreport_zip_obj.namelist()[0]}', 0o755)
+                    os.remove(f'{self.path}/{sosreport}')
+                    sosreports.append(sosreport_zip_obj.namelist()[0])
+                    _LOGGER.info('Extracted the zipped sosreport from attachments')
+                else:
+                    print("failed sosreport extraction! compression type is not tar or zip! file:", sosreport)
+                    pass
+            except:
+                print('Error occurred in file: ', sosreport)
                 metric_name = self.job + '-sosreport-extract-' + str(metric_count)
                 metric_count += 1
                 metric_name = metric_name.replace('-', '_')
                 job_comment_metric = Gauge(metric_name, 'unable to extract sosreport', registry=prometheus_registry)
                 job_comment_metric.inc()
-                raise Exception('Failed sosreport extraction from attachments')
+                pass
 
         return sosreports
 
@@ -203,7 +203,7 @@ class SBR:
             job_comment_metric = Gauge(metric_name, 'unable to send sosreport to citellus',
                                        registry=prometheus_registry)
             job_comment_metric.inc()
-            raise Exception('Unable to provide sosreport to Citellus for execution')
+            pass
 
     def get_solutions(self, sosreport_dir):
         """
@@ -294,10 +294,10 @@ class SBR:
 
         comment_response = requests.post(comment_endpoint, json=payload, auth=(self.rhn_username, self.rhn_password))
         if comment_response.status_code == 200 or comment_response.status_code == 201:
-            _LOGGER.info('comment to customer cases was successfully published')
+            print('comment to customer cases was successfully published')
             return True
         else:
-            _LOGGER.error('comment to customer cases was NOT successfully published')
+            print('comment to customer cases was NOT successfully published')
             metric_name = self.job + '-publish-comment'
             metric_name = metric_name.replace('-', '_')
             job_comment_metric = Gauge(metric_name, 'Error of comment publish on customer case',
@@ -332,6 +332,7 @@ class SBR:
                     self.ssh_copy_attachments(remote_host, remote_port, remote_dir)
                     if os.path.isdir(self.path):
                         sosreports = self.get_all_sosreports()
+                        print("List of extracted sosreports: ", sosreports)
                         for sosreport in sosreports:
                             execution_path = f"{self.path}/{sosreport}"
                             self.execute_citellus(execution_path)
@@ -340,11 +341,11 @@ class SBR:
                             comment, link = self.generate_comments(solution_data)
                             print("Comment:", comment)
                             complete = True
-                            # if comment:
-                            #     complete = self.publish_comments(comment, link)
+                            if comment:
+                                complete = self.publish_comments(comment, link)
 
                 if complete:
-                    _LOGGER.info('Script successfully completed')
+                    print('Script successfully completed')
                 else:
                     metric_name = self.job + '-application-failed'
                     metric_name = metric_name.replace('-', '_')
@@ -352,9 +353,10 @@ class SBR:
                                                registry=prometheus_registry)
                     job_comment_metric.inc()
                     _LOGGER.info('Script Unable to process the ticket')
-                    raise Exception('Script Unable to process the ticket')
+                    print('Script Failed!')
         except Exception as e:
-            print("Script Failed due to", e)
+            print("Script Failed!")
+            traceback.print_exc()
         self.pushgateway(self.job)
 
 

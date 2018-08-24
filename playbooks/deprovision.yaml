@@ -37,4 +37,4 @@
     ignore_errors: true
     with_nested:
       - ['deploymentconfig', 'buildconfig', 'imagestream', 'service','route']
-      - ['sbr-openstack']
+      - ['sbr-openstack','pushgateway']
